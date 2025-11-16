@@ -1,0 +1,18 @@
+# Dummy Hive configuration - replace values with your actual Hive credentials
+#
+# Example usage:
+#   host: "hive-server.example.com"
+#   port: 10000
+#   username: "your-username"
+#   password: "your-password"
+#   database: "default"
+#   auth: "CUSTOM"  # or "NONE", "LDAP", "KERBEROS", depending on your setup
+
+host: "your-hive-hostname"
+port: 10000
+username: "your-username"
+password: "your-password"
+database: "default"
+auth: "NONE"
+
+
