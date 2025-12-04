@@ -11,6 +11,6 @@ hive_jdbc_url: "jdbc:hive2://your-hive-hostname:10000/default"
 hive_driver_class: "org.apache.hive.jdbc.HiveDriver"
 username: "your-username"
 password: "your-password"
-# hive_driver_jar: "/path/to/hive-jdbc-driver.jar"  # Uncomment and set if needed
+hive_driver_jar: "/Users/rahulsriram/Hive-Connector/drivers/hive-jdbc-3.1.2-standalone.jar"
 
 

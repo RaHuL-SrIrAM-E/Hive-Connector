@@ -59,7 +59,43 @@ password: "your-password"
 # hive_driver_jar: "/path/to/hive-jdbc-3.1.2-standalone.jar"
 ```
 
-**Note**: You'll need the Hive JDBC driver JAR file. You can download it from your Hive distribution or Apache Hive releases. If the JAR is in your Java classpath, you don't need to specify `hive_driver_jar`. Otherwise, provide the full path to the JAR file.
+**Note**: You'll need the Hive JDBC driver JAR file. See the section below for download instructions.
+
+### 3.1. Download Hive JDBC Driver
+
+You need to download the Hive JDBC driver JAR file. We provide helper scripts to make this easy:
+
+**Option 1: Use the Python download script (Recommended - Cross-platform):**
+```bash
+python download_hive_driver.py
+```
+
+**Option 2: Use the shell script (macOS/Linux):**
+```bash
+./download_hive_driver.sh
+```
+
+**Option 3: Manual download:**
+
+1. **Maven Central (Standalone JAR - Recommended)**:
+   - Visit: https://mvnrepository.com/artifact/org.apache.hive/hive-jdbc
+   - Download the **standalone** JAR file (includes all dependencies)
+   - Direct link example: https://repo1.maven.org/maven2/org/apache/hive/hive-jdbc/3.1.2/hive-jdbc-3.1.2-standalone.jar
+
+2. **Apache Hive Official**:
+   - Visit: https://hive.apache.org/downloads.html
+   - Download the Hive binary distribution
+   - Extract and find: `lib/hive-jdbc-*.jar`
+
+3. **Cloudera Distribution** (if using Cloudera):
+   - Visit: https://www.cloudera.com/downloads/connectors/hive/jdbc.html
+
+After downloading, update your `config.yaml` with the full path to the JAR file:
+```yaml
+hive_driver_jar: "/path/to/hive-jdbc-3.1.2-standalone.jar"
+```
+
+**Important**: Make sure the driver version matches your Hive server version!
 
 ### 4. Run a query and get a CSV
 
