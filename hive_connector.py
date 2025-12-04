@@ -1,11 +1,36 @@
 import logging
+import os
+import shutil
 from typing import Any, Dict, List, Tuple
 
 import yaml
-import jaydebeapi
+
+try:
+    import jaydebeapi
+except ImportError as exc:
+    raise ImportError(
+        "JayDeBeApi is not installed. Please install it with: pip install JayDeBeApi JPype1"
+    ) from exc
 
 
 logger = logging.getLogger(__name__)
+
+
+def check_java_available() -> bool:
+    """
+    Check if Java is installed and available in the system PATH.
+
+    Returns
+    -------
+    bool
+        True if Java is available, False otherwise.
+    """
+    java_path = shutil.which("java")
+    if java_path:
+        logger.info("Java found at: %s", java_path)
+        return True
+    logger.warning("Java not found in PATH. JayDeBeApi requires Java to be installed.")
+    return False
 
 
 def load_config(config_path: str = "config.yaml") -> Dict[str, Any]:
@@ -52,6 +77,14 @@ def get_hive_connection(config: Dict[str, Any]):
     jaydebeapi.Connection
         A JDBC connection object.
     """
+    # Check if Java is available before attempting connection
+    if not check_java_available():
+        raise RuntimeError(
+            "Java is not installed or not in PATH. "
+            "Please install Java (JDK 8 or later) and ensure it's in your system PATH. "
+            "You can verify by running: java -version"
+        )
+
     jdbc_url = config["hive_jdbc_url"]
     driver_class = config["hive_driver_class"]
     username = config["username"]
@@ -62,6 +95,8 @@ def get_hive_connection(config: Dict[str, Any]):
     try:
         if driver_jar:
             # If JAR path is provided, use it
+            if not os.path.exists(driver_jar):
+                raise FileNotFoundError(f"Hive JDBC driver JAR not found at: {driver_jar}")
             conn = jaydebeapi.connect(
                 driver_class,
                 jdbc_url,
@@ -78,6 +113,16 @@ def get_hive_connection(config: Dict[str, Any]):
         logger.info("Successfully connected to Hive via JDBC")
     except Exception as exc:  # noqa: BLE001
         logger.exception("Failed to create Hive JDBC connection to '%s'", jdbc_url)
+        # Provide more helpful error messages for common issues
+        error_msg = str(exc).lower()
+        if "jpype" in error_msg or "java" in error_msg:
+            raise RuntimeError(
+                f"Java/JDBC connection error: {exc}\n"
+                "This usually means:\n"
+                "1. Java is not installed - install JDK 8 or later\n"
+                "2. JPype1 is not properly installed - try: pip install --upgrade JPype1\n"
+                "3. JAVA_HOME environment variable is not set correctly"
+            ) from exc
         raise
 
     return conn
