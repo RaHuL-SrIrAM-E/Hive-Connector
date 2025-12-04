@@ -33,8 +33,8 @@ def parse_args() -> argparse.Namespace:
         "--output",
         "-o",
         type=str,
-        default="output.csv",
-        help="Path to the output CSV file (default: output.csv)",
+        default=None,
+        help="Path to the output CSV file. If not provided and using --query-file, output name is derived from query file name (e.g., abc.sql -> abc.csv). Otherwise defaults to output.csv",
     )
     return parser.parse_args()
 
@@ -75,6 +75,18 @@ def main() -> None:
     args = parse_args()
     query = get_query_from_input(args.query, args.query_file)
 
+    # Determine output filename
+    if args.output:
+        # User explicitly provided output filename
+        output_path = Path(args.output)
+    elif args.query_file:
+        # Generate output filename from query file name
+        query_file_path = Path(args.query_file)
+        output_path = query_file_path.with_suffix(".csv")
+    else:
+        # Default fallback
+        output_path = Path("output.csv")
+
     try:
         columns, rows = run_hive_query(query, config_path=args.config)
     except Exception as exc:  # noqa: BLE001
@@ -85,7 +97,6 @@ def main() -> None:
         print("Query executed successfully. No rows returned.")
         return
 
-    output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     with output_path.open("w", newline="", encoding="utf-8") as csvfile:
