@@ -15,11 +15,19 @@ def parse_args() -> argparse.Namespace:
         default="config.yaml",
         help="Path to the Hive YAML config file (default: config.yaml)",
     )
-    parser.add_argument(
+    query_group = parser.add_mutually_exclusive_group()
+    query_group.add_argument(
         "--query",
         type=str,
-        required=False,
-        help="SQL query to run. If not provided, reads from stdin.",
+        help="SQL query to run directly (inline).",
+    )
+    query_group.add_argument(
+        "--query-file",
+        "--file",
+        "-f",
+        type=str,
+        dest="query_file",
+        help="Path to a file containing the SQL query to run.",
     )
     parser.add_argument(
         "--output",
@@ -31,10 +39,22 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def get_query_from_input(initial_query: Optional[str]) -> str:
-    if initial_query:
-        return initial_query
+def get_query_from_input(query: Optional[str], query_file: Optional[str]) -> str:
+    # Priority: query_file > query > stdin
+    if query_file:
+        query_path = Path(query_file)
+        if not query_path.exists():
+            raise FileNotFoundError(f"Query file not found: {query_file}")
+        with query_path.open("r", encoding="utf-8") as f:
+            query = f.read().strip()
+        if not query:
+            raise ValueError(f"Query file is empty: {query_file}")
+        return query
 
+    if query:
+        return query
+
+    # Fall back to stdin
     print("Enter your Hive SQL query. Finish with Ctrl+D (Unix/macOS) or Ctrl+Z then Enter (Windows):")
     lines = []
     try:
@@ -53,7 +73,7 @@ def get_query_from_input(initial_query: Optional[str]) -> str:
 def main() -> None:
     logging.basicConfig(level=logging.INFO)
     args = parse_args()
-    query = get_query_from_input(args.query)
+    query = get_query_from_input(args.query, args.query_file)
 
     try:
         columns, rows = run_hive_query(query, config_path=args.config)
