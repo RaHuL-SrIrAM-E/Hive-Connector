@@ -17,8 +17,8 @@ env/
 *~
 
 # Project specific
-drivers/
-*.jar
+# drivers/  # Commented out - JAR files will be committed
+# *.jar     # Commented out - JAR files will be committed
 output.csv
 *.log
 
