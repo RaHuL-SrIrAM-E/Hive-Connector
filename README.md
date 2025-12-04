@@ -15,25 +15,26 @@ pip install -r requirements.txt
 
 ### 2. Configure Hive connection
 
-Edit `config.yaml` and replace the dummy values with your actual Hive details:
+Edit `config.yaml` and replace the dummy values with your actual Hive JDBC credentials:
 
-- **host**: Hive server hostname
-- **port**: Hive server port (commonly `10000`)
+- **hive_jdbc_url**: Full JDBC URL for Hive (e.g., `jdbc:hive2://hostname:port/database`)
+- **hive_driver_class**: JDBC driver class name (typically `org.apache.hive.jdbc.HiveDriver`)
 - **username**: Your Hive username
-- **password**: Your Hive password (if needed for your auth mechanism)
-- **database**: Default database to use
-- **auth**: Authentication mechanism, e.g. `NONE`, `LDAP`, `KERBEROS`, `CUSTOM`
+- **password**: Your Hive password
+- **hive_driver_jar** (optional): Path to the Hive JDBC driver JAR file if not in classpath
 
 Example:
 
 ```yaml
-host: "hive-server.example.com"
-port: 10000
+hive_jdbc_url: "jdbc:hive2://hive-server.example.com:10000/default"
+hive_driver_class: "org.apache.hive.jdbc.HiveDriver"
 username: "your-username"
 password: "your-password"
-database: "default"
-auth: "NONE"
+# Optional: uncomment and set if you need to specify the JAR path
+# hive_driver_jar: "/path/to/hive-jdbc-3.1.2-standalone.jar"
 ```
+
+**Note**: You'll need the Hive JDBC driver JAR file. You can download it from your Hive distribution or Apache Hive releases. If the JAR is in your Java classpath, you don't need to specify `hive_driver_jar`. Otherwise, provide the full path to the JAR file.
 
 ### 3. Run a query and get a CSV
 

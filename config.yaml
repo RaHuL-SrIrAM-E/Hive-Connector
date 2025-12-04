@@ -1,18 +1,16 @@
 # Dummy Hive configuration - replace values with your actual Hive credentials
 #
 # Example usage:
-#   host: "hive-server.example.com"
-#   port: 10000
+#   hive_jdbc_url: "jdbc:hive2://hive-server.example.com:10000/default"
+#   hive_driver_class: "org.apache.hive.jdbc.HiveDriver"
 #   username: "your-username"
 #   password: "your-password"
-#   database: "default"
-#   auth: "CUSTOM"  # or "NONE", "LDAP", "KERBEROS", depending on your setup
+#   hive_driver_jar: "/path/to/hive-jdbc-3.1.2-standalone.jar"  # Optional: only if JAR not in classpath
 
-host: "your-hive-hostname"
-port: 10000
+hive_jdbc_url: "jdbc:hive2://your-hive-hostname:10000/default"
+hive_driver_class: "org.apache.hive.jdbc.HiveDriver"
 username: "your-username"
 password: "your-password"
-database: "default"
-auth: "NONE"
+# hive_driver_jar: "/path/to/hive-jdbc-driver.jar"  # Uncomment and set if needed
 
 
