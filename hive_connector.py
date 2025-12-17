@@ -62,6 +62,57 @@ def load_config(config_path: str = "config.yaml") -> Dict[str, Any]:
     return config
 
 
+def get_query_from_config(config: Dict[str, Any], config_path: str = "config.yaml") -> str:
+    """
+    Get SQL query from configuration file.
+    Supports both inline 'query' and 'query_file' options.
+
+    Parameters
+    ----------
+    config : Dict[str, Any]
+        Configuration dictionary.
+    config_path : str
+        Path to the config file (used for resolving relative paths in query_file).
+
+    Returns
+    -------
+    str
+        The SQL query string.
+    """
+    query_file = config.get("query_file")
+    query = config.get("query")
+
+    # Priority: query_file > query
+    if query_file:
+        # Resolve path relative to config file location
+        config_dir = Path(config_path).parent
+        query_file_path = (config_dir / query_file).resolve()
+        
+        if not query_file_path.exists():
+            raise FileNotFoundError(f"Query file not found: {query_file_path}")
+        
+        with query_file_path.open("r", encoding="utf-8") as f:
+            query_text = f.read().strip()
+        
+        if not query_text:
+            raise ValueError(f"Query file is empty: {query_file_path}")
+        
+        logger.info("Loaded query from file: %s", query_file_path)
+        return query_text
+
+    if query:
+        query_text = query.strip()
+        if not query_text:
+            raise ValueError("Query in config file is empty")
+        logger.info("Loaded query from config file")
+        return query_text
+
+    raise ValueError(
+        "No query specified in config file. Please provide either 'query' (inline SQL) "
+        "or 'query_file' (path to SQL file) in the config file."
+    )
+
+
 def get_hive_connection(config: Dict[str, Any]):
     """
     Create and return a Hive connection using JDBC.

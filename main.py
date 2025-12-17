@@ -4,91 +4,88 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from hive_connector import run_hive_query
+from hive_connector import load_config, get_query_from_config, run_hive_query
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run a SQL query against Hive.")
+    parser = argparse.ArgumentParser(
+        description="Run a SQL query against Hive using configuration from config file."
+    )
     parser.add_argument(
         "--config",
         type=str,
         default="config.yaml",
-        help="Path to the Hive YAML config file (default: config.yaml)",
-    )
-    query_group = parser.add_mutually_exclusive_group()
-    query_group.add_argument(
-        "--query",
-        type=str,
-        help="SQL query to run directly (inline).",
-    )
-    query_group.add_argument(
-        "--query-file",
-        "--file",
-        "-f",
-        type=str,
-        dest="query_file",
-        help="Path to a file containing the SQL query to run.",
+        help="Path to the Hive YAML config file containing credentials and query (default: config.yaml)",
     )
     parser.add_argument(
         "--output",
         "-o",
         type=str,
         default=None,
-        help="Path to the output CSV file. If not provided and using --query-file, output name is derived from query file name (e.g., abc.sql -> abc.csv). Otherwise defaults to output.csv",
+        help="Path to the output CSV file. If not provided, output name is derived from query_file in config (e.g., abc.sql -> abc.csv), or defaults to output.csv",
     )
     return parser.parse_args()
 
 
-def get_query_from_input(query: Optional[str], query_file: Optional[str]) -> str:
-    # Priority: query_file > query > stdin
+def determine_output_path(config: dict, config_path: str, explicit_output: Optional[str]) -> Path:
+    """
+    Determine the output CSV file path based on config and command line arguments.
+
+    Parameters
+    ----------
+    config : dict
+        Configuration dictionary.
+    config_path : str
+        Path to the config file.
+    explicit_output : Optional[str]
+        Explicitly provided output path from command line.
+
+    Returns
+    -------
+    Path
+        Path to the output CSV file.
+    """
+    if explicit_output:
+        # Command line argument takes highest priority
+        return Path(explicit_output)
+
+    if "output" in config:
+        # Use output path from config
+        output_path = Path(config["output"])
+        # Resolve relative paths relative to config file location
+        if not output_path.is_absolute():
+            config_dir = Path(config_path).parent
+            output_path = (config_dir / output_path).resolve()
+        return output_path
+
+    # Try to derive from query_file
+    query_file = config.get("query_file")
     if query_file:
-        query_path = Path(query_file)
-        if not query_path.exists():
-            raise FileNotFoundError(f"Query file not found: {query_file}")
-        with query_path.open("r", encoding="utf-8") as f:
-            query = f.read().strip()
-        if not query:
-            raise ValueError(f"Query file is empty: {query_file}")
-        return query
+        config_dir = Path(config_path).parent
+        query_file_path = (config_dir / query_file).resolve()
+        return query_file_path.with_suffix(".csv")
 
-    if query:
-        return query
-
-    # Fall back to stdin
-    print("Enter your Hive SQL query. Finish with Ctrl+D (Unix/macOS) or Ctrl+Z then Enter (Windows):")
-    lines = []
-    try:
-        while True:
-            line = input()
-            lines.append(line)
-    except EOFError:
-        pass
-
-    query = "\n".join(lines).strip()
-    if not query:
-        raise ValueError("No query provided.")
-    return query
+    # Default fallback
+    return Path("output.csv")
 
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO)
     args = parse_args()
-    query = get_query_from_input(args.query, args.query_file)
-
-    # Determine output filename
-    if args.output:
-        # User explicitly provided output filename
-        output_path = Path(args.output)
-    elif args.query_file:
-        # Generate output filename from query file name
-        query_file_path = Path(args.query_file)
-        output_path = query_file_path.with_suffix(".csv")
-    else:
-        # Default fallback
-        output_path = Path("output.csv")
 
     try:
+        # Load configuration
+        config = load_config(args.config)
+        
+        # Get query from config
+        query = get_query_from_config(config, args.config)
+        
+        # Determine output path
+        output_path = determine_output_path(config, args.config, args.output)
+
+        # Execute query
         columns, rows = run_hive_query(query, config_path=args.config)
+
     except Exception as exc:  # noqa: BLE001
         logging.error("Failed to run query: %s", exc)
         raise SystemExit(1) from exc
