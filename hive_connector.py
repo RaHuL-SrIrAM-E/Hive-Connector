@@ -1,7 +1,8 @@
 import logging
 import os
 import shutil
-from typing import Any, Dict, List, Tuple
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
 
@@ -33,31 +34,54 @@ def check_java_available() -> bool:
     return False
 
 
-def load_config(config_path: str = "config.yaml") -> Dict[str, Any]:
+def load_config(config_path: str = "config.yaml", tag: Optional[str] = None) -> Dict[str, Any]:
     """
     Load Hive connection configuration from a YAML file.
+    Supports both flat config structure and named tag-based configurations.
 
     Parameters
     ----------
     config_path : str
         Path to the YAML configuration file.
+    tag : Optional[str]
+        Tag name to load specific configuration. If None, loads flat config structure.
 
     Returns
     -------
     Dict[str, Any]
-        Dictionary with configuration values.
+        Dictionary with configuration values for the specified tag or flat config.
     """
     try:
         with open(config_path, "r", encoding="utf-8") as f:
-            config = yaml.safe_load(f) or {}
+            all_configs = yaml.safe_load(f) or {}
     except FileNotFoundError as exc:
         logger.error("Config file not found at path '%s'", config_path)
         raise FileNotFoundError(f"Config file not found: {config_path}") from exc
 
+    # If tag is specified, load that specific configuration
+    if tag:
+        if tag not in all_configs:
+            available_tags = ", ".join(all_configs.keys()) if all_configs else "none"
+            raise ValueError(
+                f"Tag '{tag}' not found in config file '{config_path}'. "
+                f"Available tags: {available_tags}"
+            )
+        config = all_configs[tag]
+        if not isinstance(config, dict):
+            raise ValueError(f"Tag '{tag}' in config file must contain a dictionary of settings")
+        logger.info("Loaded configuration for tag '%s'", tag)
+    else:
+        # Load flat config structure (backward compatibility)
+        config = all_configs
+
+    # Validate required keys
     required_keys = ["hive_jdbc_url", "hive_driver_class", "username", "password"]
     missing = [k for k in required_keys if k not in config]
     if missing:
-        raise ValueError(f"Missing required config keys in {config_path}: {', '.join(missing)}")
+        tag_info = f" (tag: {tag})" if tag else ""
+        raise ValueError(
+            f"Missing required config keys in {config_path}{tag_info}: {', '.join(missing)}"
+        )
 
     return config
 
@@ -179,7 +203,7 @@ def get_hive_connection(config: Dict[str, Any]):
     return conn
 
 
-def run_hive_query(query: str, config_path: str = "config.yaml") -> Tuple[List[str], List[Tuple[Any, ...]]]:
+def run_hive_query(query: str, config: Dict[str, Any]) -> Tuple[List[str], List[Tuple[Any, ...]]]:
     """
     Run a query against Hive and return the results.
 
@@ -187,16 +211,15 @@ def run_hive_query(query: str, config_path: str = "config.yaml") -> Tuple[List[s
     ----------
     query : str
         The SQL query to execute.
-    config_path : str
-        Path to the YAML configuration file.
+    config : Dict[str, Any]
+        Configuration dictionary with connection settings.
 
     Returns
     -------
     Tuple[List[str], List[Tuple[Any, ...]]]
         A tuple of (column_names, rows).
     """
-    logger.info("Running Hive query using config '%s'", config_path)
-    config = load_config(config_path)
+    logger.info("Running Hive query")
 
     conn = None
     try:
@@ -221,8 +244,9 @@ def run_hive_query(query: str, config_path: str = "config.yaml") -> Tuple[List[s
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     # Simple manual test (edit the query as needed)
-    example_query = "SELECT 1"
-    cols, data = run_hive_query(example_query)
+    config = load_config("config.yaml", tag="InputQuery1")
+    query = get_query_from_config(config, "config.yaml")
+    cols, data = run_hive_query(query, config=config)
     print("Columns:", cols)
     for row in data:
         print(row)

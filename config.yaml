@@ -1,24 +1,41 @@
-# Hive configuration - replace values with your actual Hive credentials and query
+# Hive configuration with multiple named query configurations
+# Each configuration tag contains its own connection settings and query
 #
-# Connection settings:
-hive_jdbc_url: "jdbc:hive2://your-hive-hostname:10000/default"
-hive_driver_class: "org.apache.hive.jdbc.HiveDriver"
-username: "your-username"
-password: "your-password"
-hive_driver_jar: "/Users/rahulsriram/Hive-Connector/drivers/hive-jdbc-3.1.2-standalone.jar"
+# Usage: python3 main.py --config config.yaml --tag InputQuery1
 
-# Query settings (use either 'query' or 'query_file', not both):
-# Option 1: Inline SQL query
-query: |
-  SELECT *
-  FROM your_table
-  WHERE some_column = 'some_value'
-  LIMIT 100
+InputQuery1:
+  # Connection settings
+  hive_jdbc_url: "jdbc:hive2://your-hive-hostname:10000/default"
+  hive_driver_class: "org.apache.hive.jdbc.HiveDriver"
+  username: "your-username"
+  password: "your-password"
+  hive_driver_jar: "/Users/rahulsriram/Hive-Connector/drivers/hive-jdbc-3.1.2-standalone.jar"
+  
+  # Query settings (use either 'query' or 'query_file', not both):
+  query: |
+    SELECT *
+    FROM your_table
+    WHERE some_column = 'some_value'
+    LIMIT 100
+  
+  # Optional: Path to SQL file (alternative to 'query')
+  # query_file: "path/to/your_query.sql"
+  
+  # Optional: Output CSV file path
+  # output: "output.csv"
 
-# Option 2: Path to SQL file (alternative to 'query')
-# query_file: "path/to/your_query.sql"
-
-# Output settings:
-# output: "output.csv"  # Optional: output CSV file path (default: output.csv or derived from query_file)
+InputQuery2:
+  # Connection settings
+  hive_jdbc_url: "jdbc:hive2://another-hostname:10000/default"
+  hive_driver_class: "org.apache.hive.jdbc.HiveDriver"
+  username: "another-username"
+  password: "another-password"
+  hive_driver_jar: "/Users/rahulsriram/Hive-Connector/drivers/hive-jdbc-3.1.2-standalone.jar"
+  
+  # Query settings
+  query_file: "example_query.sql"
+  
+  # Optional: Output CSV file path
+  # output: "inputquery2_results.csv"
 
 

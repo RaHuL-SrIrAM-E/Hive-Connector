@@ -18,6 +18,13 @@ def parse_args() -> argparse.Namespace:
         help="Path to the Hive YAML config file containing credentials and query (default: config.yaml)",
     )
     parser.add_argument(
+        "--tag",
+        "-t",
+        type=str,
+        default=None,
+        help="Tag name of the configuration to use (e.g., InputQuery1, InputQuery2). Required when config file uses tagged configurations.",
+    )
+    parser.add_argument(
         "--output",
         "-o",
         type=str,
@@ -74,8 +81,8 @@ def main() -> None:
     args = parse_args()
 
     try:
-        # Load configuration
-        config = load_config(args.config)
+        # Load configuration for the specified tag
+        config = load_config(args.config, tag=args.tag)
         
         # Get query from config
         query = get_query_from_config(config, args.config)
@@ -84,7 +91,7 @@ def main() -> None:
         output_path = determine_output_path(config, args.config, args.output)
 
         # Execute query
-        columns, rows = run_hive_query(query, config_path=args.config)
+        columns, rows = run_hive_query(query, config=config)
 
     except Exception as exc:  # noqa: BLE001
         logging.error("Failed to run query: %s", exc)
