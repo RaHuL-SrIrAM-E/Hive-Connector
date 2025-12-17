@@ -9,7 +9,22 @@ from hive_connector import load_config, get_query_from_config, run_hive_query
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Run a SQL query against Hive using configuration from config file."
+        description="Run a SQL query against Hive using configuration from config file.",
+        epilog="""
+Examples:
+  # Run query using InputQuery1 configuration
+  python3 main.py --config config.yaml --tag InputQuery1
+
+  # Short form
+  python3 main.py -t InputQuery1
+
+  # With custom output file
+  python3 main.py --tag InputQuery2 --output results.csv
+
+  # Using different config file
+  python3 main.py --config my_config.yaml --tag InputQuery1
+        """,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
         "--config",
@@ -22,7 +37,7 @@ def parse_args() -> argparse.Namespace:
         "-t",
         type=str,
         default=None,
-        help="Tag name of the configuration to use (e.g., InputQuery1, InputQuery2). Required when config file uses tagged configurations.",
+        help="Tag name of the configuration to use (e.g., InputQuery1, InputQuery2). Required when config file uses tagged configurations. Each tag contains its own connection settings and query.",
     )
     parser.add_argument(
         "--output",
