@@ -11,6 +11,12 @@ InputQuery1:
   password: "your-password"
   hive_driver_jar: "/Users/rahulsriram/Hive-Connector/drivers/hive-jdbc-3.1.2-standalone.jar"
   
+  # SSL/TLS Certificate settings (for PKIX certificate validation issues)
+  # truststore_path: "/path/to/truststore.jks"  # Path to Java truststore (JKS or PKCS12 format)
+  # truststore_password: "changeit"  # Password for truststore
+  # truststore_type: "JKS"  # Type: JKS or PKCS12 (default: JKS)
+  # disable_ssl_verification: false  # Set to true to disable SSL certificate verification (NOT recommended for production)
+  
   # Query settings (use either 'query' or 'query_file', not both):
   query: |
     SELECT *

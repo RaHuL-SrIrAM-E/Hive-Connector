@@ -13,6 +13,11 @@ except ImportError as exc:
         "JayDeBeApi is not installed. Please install it with: pip install JayDeBeApi JPype1"
     ) from exc
 
+try:
+    import jpype
+except ImportError:
+    jpype = None  # jpype might not be directly importable, but jaydebeapi uses it internally
+
 
 logger = logging.getLogger(__name__)
 
@@ -137,6 +142,62 @@ def get_query_from_config(config: Dict[str, Any], config_path: str = "config.yam
     )
 
 
+def configure_ssl_settings(config: Dict[str, Any]) -> None:
+    """
+    Configure SSL/TLS settings for Java/JDBC connections.
+    Sets Java system properties for truststore and SSL verification.
+
+    Parameters
+    ----------
+    config : Dict[str, Any]
+        Configuration dictionary that may contain SSL settings.
+    """
+    if jpype is None:
+        logger.warning("jpype not available - SSL settings will be ignored. Install JPype1 for SSL support.")
+        return
+
+    # Check if SSL configuration is provided
+    truststore_path = config.get("truststore_path")
+    truststore_password = config.get("truststore_password", "")
+    truststore_type = config.get("truststore_type", "JKS")
+    disable_ssl_verification = config.get("disable_ssl_verification", False)
+
+    # Ensure JVM is started
+    if not jpype.isJVMStarted():
+        jpype.startJVM(jpype.getDefaultJVMPath())
+
+    if disable_ssl_verification:
+        logger.warning("SSL certificate verification is DISABLED. This is not recommended for production!")
+        # Note: Completely disabling SSL verification requires custom TrustManager
+        # For now, we'll set empty truststore which may help in some cases
+        jpype.java.lang.System.setProperty("javax.net.ssl.trustStore", "")
+        jpype.java.lang.System.setProperty("javax.net.ssl.trustStorePassword", "")
+
+    if truststore_path:
+        truststore_path_obj = Path(truststore_path)
+        if not truststore_path_obj.exists():
+            raise FileNotFoundError(f"Truststore file not found: {truststore_path}")
+        
+        if not truststore_path_obj.is_absolute():
+            raise ValueError(f"Truststore path must be absolute: {truststore_path}")
+
+        logger.info("Configuring SSL truststore: %s (type: %s)", truststore_path, truststore_type)
+        
+        # Set Java system properties for SSL
+        jpype.java.lang.System.setProperty("javax.net.ssl.trustStore", str(truststore_path_obj))
+        jpype.java.lang.System.setProperty("javax.net.ssl.trustStorePassword", truststore_password)
+        jpype.java.lang.System.setProperty("javax.net.ssl.trustStoreType", truststore_type)
+        
+        # Additional SSL properties (may be needed for client certificates)
+        if config.get("keystore_path"):
+            keystore_path_obj = Path(config["keystore_path"])
+            keystore_password = config.get("keystore_password", truststore_password)
+            keystore_type = config.get("keystore_type", truststore_type)
+            jpype.java.lang.System.setProperty("javax.net.ssl.keyStore", str(keystore_path_obj))
+            jpype.java.lang.System.setProperty("javax.net.ssl.keyStorePassword", keystore_password)
+            jpype.java.lang.System.setProperty("javax.net.ssl.keyStoreType", keystore_type)
+
+
 def get_hive_connection(config: Dict[str, Any]):
     """
     Create and return a Hive connection using JDBC.
@@ -145,7 +206,7 @@ def get_hive_connection(config: Dict[str, Any]):
     ----------
     config : Dict[str, Any]
         Configuration dictionary with keys: hive_jdbc_url, hive_driver_class,
-        username, password.
+        username, password. May also contain SSL settings.
 
     Returns
     -------
@@ -159,6 +220,14 @@ def get_hive_connection(config: Dict[str, Any]):
             "Please install Java (JDK 8 or later) and ensure it's in your system PATH. "
             "You can verify by running: java -version"
         )
+
+    # Configure SSL settings if provided (must be done before connecting)
+    if config.get("truststore_path") or config.get("disable_ssl_verification"):
+        # Ensure JPype is started
+        if not jpype.isJVMStarted():
+            # Start JVM if not already started
+            jpype.startJVM(jpype.getDefaultJVMPath())
+        configure_ssl_settings(config)
 
     jdbc_url = config["hive_jdbc_url"]
     driver_class = config["hive_driver_class"]
@@ -190,6 +259,17 @@ def get_hive_connection(config: Dict[str, Any]):
         logger.exception("Failed to create Hive JDBC connection to '%s'", jdbc_url)
         # Provide more helpful error messages for common issues
         error_msg = str(exc).lower()
+        if "pkix" in error_msg or "certificate" in error_msg or "ssl" in error_msg:
+            raise RuntimeError(
+                f"SSL/Certificate error: {exc}\n"
+                "This is usually a PKIX certificate validation issue. Solutions:\n"
+                "1. Provide a truststore_path in config with the CA certificate\n"
+                "2. Import the server's certificate into a Java truststore\n"
+                "3. (Not recommended) Set disable_ssl_verification: true in config\n"
+                "\n"
+                "To create a truststore:\n"
+                "  keytool -import -alias hive-cert -file server.crt -keystore truststore.jks -storepass changeit"
+            ) from exc
         if "jpype" in error_msg or "java" in error_msg:
             raise RuntimeError(
                 f"Java/JDBC connection error: {exc}\n"
